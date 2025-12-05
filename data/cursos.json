@@ -1,0 +1,377 @@
+[
+  {
+    "id": "1",
+    "nombre": "MÉTODOS DE ESTUDIOS UNIVERSITARIOS",
+    "ciclo": "I",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC001"
+    ]
+  },
+  {
+    "id": "2",
+    "nombre": "ALGORITMO Y FUNDAMENTOS DE PROGRAMACIÓN",
+    "ciclo": "I",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC002",
+      "DOC003"
+    ]
+  },
+  {
+    "id": "3",
+    "nombre": "DERECHOS FUNDAMENTALES DE LA PERSONA Y LA SOCIEDAD",
+    "ciclo": "I",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC016"
+    ]
+  },
+  {
+    "id": "4",
+    "nombre": "COMUNICACIÓN",
+    "ciclo": "I",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC005"
+    ]
+  },
+  {
+    "id": "5",
+    "nombre": "TEORÍA GENERAL DE SISTEMAS",
+    "ciclo": "I",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC006"
+    ]
+  },
+  {
+    "id": "6",
+    "nombre": "MATEMÁTICA BÁSICA I",
+    "ciclo": "I",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC007"
+    ]
+  },
+  {
+    "id": "7",
+    "nombre": "HERRAMIENTAS DIGITALES",
+    "ciclo": "II",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC009"
+    ]
+  },
+  {
+    "id": "8",
+    "nombre": "MATEMÁTICA BÁSICA II",
+    "ciclo": "II",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC004"
+    ]
+  },
+  {
+    "id": "9",
+    "nombre": "DESARROLLO PERSONAL",
+    "ciclo": "II",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC012"
+    ]
+  },
+  {
+    "id": "10",
+    "nombre": "FÍSICA GENERAL",
+    "ciclo": "II",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC008"
+    ]
+  },
+  {
+    "id": "11",
+    "nombre": "ESTRUCTURA DE DATOS",
+    "ciclo": "II",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC011"
+    ]
+  },
+  {
+    "id": "12",
+    "nombre": "DIBUJO CAD",
+    "ciclo": "II",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC010"
+    ]
+  },
+  {
+    "id": "13",
+    "nombre": "CULTURA AMBIENTAL Y RESPONSABILIDAD SOCIAL",
+    "ciclo": "IV",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC013"
+    ]
+  },
+  {
+    "id": "14",
+    "nombre": "DERECHO EMPRESARIAL",
+    "ciclo": "IV",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC016"
+    ]
+  },
+  {
+    "id": "15",
+    "nombre": "ESTADÍSTICA Y PROBABILIDADES",
+    "ciclo": "IV",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC008"
+    ]
+  },
+  {
+    "id": "16",
+    "nombre": "INVESTIGACIÓN OPERATIVA II",
+    "ciclo": "IV",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC014"
+    ]
+  },
+  {
+    "id": "17",
+    "nombre": "SISTEMAS DIGITALES",
+    "ciclo": "IV",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC014",
+      "DOC035"
+    ]
+  },
+  {
+    "id": "18",
+    "nombre": "FUNDAMENTOS DE BASE DE DATOS",
+    "ciclo": "IV",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC006"
+    ]
+  },
+  {
+    "id": "19",
+    "nombre": "DESARROLLO WEB FULL STACK",
+    "ciclo": "IV",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC015",
+      "DOC036"
+    ]
+  },
+  {
+    "id": "20",
+    "nombre": "DISEÑO DE REDES DE COMUNICACIONES",
+    "ciclo": "VI",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC021",
+      "DOC023"
+    ]
+  },
+  {
+    "id": "21",
+    "nombre": "CONFIGURACIÓN DE SERVIDORES",
+    "ciclo": "VI",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC002",
+      "DOC018"
+    ]
+  },
+  {
+    "id": "22",
+    "nombre": "DATA WAREHOUSE",
+    "ciclo": "VI",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC002",
+      "DOC019"
+    ]
+  },
+  {
+    "id": "23",
+    "nombre": "ARQUITECTURA DE SOFTWARE",
+    "ciclo": "VI",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC024"
+    ]
+  },
+  {
+    "id": "24",
+    "nombre": "INTELIGENCIA ARTIFICIAL Y SISTEMAS EXPERTOS",
+    "ciclo": "VI",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC017",
+      "DOC020",
+      "DOC025"
+    ]
+  },
+  {
+    "id": "25",
+    "nombre": "DISEÑO DE PROCESOS DE NEGOCIOS",
+    "ciclo": "VI",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC003",
+      "DOC022"
+    ]
+  },
+  {
+    "id": "26",
+    "nombre": "PROCESO DE LA INVESTIGACIÓN CIENTÍFICA",
+    "ciclo": "VIII",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC027",
+      "DOC029",
+      "DOC031"
+    ]
+  },
+  {
+    "id": "27",
+    "nombre": "SEGURIDAD Y CRIPTOGRAFÍA",
+    "ciclo": "VIII",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC028",
+      "DOC036"
+    ]
+  },
+  {
+    "id": "28",
+    "nombre": "INTERNET DE LAS COSAS",
+    "ciclo": "VIII",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC019",
+      "DOC023"
+    ]
+  },
+  {
+    "id": "29",
+    "nombre": "TESTING Y ASEGURAMIENTO DE LA CALIDAD EN DESARROLLO DE SOFTWARE",
+    "ciclo": "VIII",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC026"
+    ]
+  },
+  {
+    "id": "30",
+    "nombre": "DEEP LEARNING",
+    "ciclo": "VIII",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC025"
+    ]
+  },
+  {
+    "id": "31",
+    "nombre": "GESTIÓN DE PROYECTOS",
+    "ciclo": "VIII",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC030"
+    ]
+  },
+  {
+    "id": "32",
+    "nombre": "PRACTICAS PREPROFESIONALES II",
+    "ciclo": "X",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC032"
+    ]
+  },
+  {
+    "id": "33",
+    "nombre": "BUSINESS INTELLIGENCE",
+    "ciclo": "X",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC020"
+    ]
+  },
+  {
+    "id": "34",
+    "nombre": "DESARROLLO DE TESIS",
+    "ciclo": "X",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC022",
+      "DOC033",
+      "DOC034"
+    ]
+  },
+  {
+    "id": "35",
+    "nombre": "AUDITORIA DE SISTEMAS",
+    "ciclo": "X",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC035"
+    ]
+  },
+  {
+    "id": "36",
+    "nombre": "ETICA DEONTOLOGICA",
+    "ciclo": "X",
+    "horas_semanales": 4,
+    "tipo": "Teoria",
+    "profesores_ids": [
+      "DOC031"
+    ]
+  }
+]

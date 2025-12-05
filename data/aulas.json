@@ -1,0 +1,86 @@
+[
+    {
+        "id": "LAB01",
+        "nombre": "LAB-01",
+        "capacidad": 20,
+        "tipo": "Laboratorio"
+    },
+    {
+        "id": "LAB02",
+        "nombre": "LAB-02",
+        "capacidad": 20,
+        "tipo": "Laboratorio"
+    },
+    {
+        "id": "LAB03",
+        "nombre": "LAB-03",
+        "capacidad": 20,
+        "tipo": "Laboratorio"
+    },
+    {
+        "id": "LAB04",
+        "nombre": "LAB-04",
+        "capacidad": 20,
+        "tipo": "Laboratorio"
+    },
+    {
+        "id": "LAB05",
+        "nombre": "LAB-05",
+        "capacidad": 20,
+        "tipo": "Laboratorio"
+    },
+    {
+        "id": "LAB06",
+        "nombre": "LAB-06",
+        "capacidad": 20,
+        "tipo": "Laboratorio"
+    },
+    {
+        "id": "LAB07",
+        "nombre": "LAB-07",
+        "capacidad": 20,
+        "tipo": "Laboratorio"
+    },
+    {
+        "id": "LAB08",
+        "nombre": "LAB-08",
+        "capacidad": 20,
+        "tipo": "Laboratorio"
+    },
+    {
+        "id": "AULA40-01",
+        "nombre": "AULA-40-01",
+        "capacidad": 40,
+        "tipo": "Teoria"
+    },
+    {
+        "id": "AULA40-02",
+        "nombre": "AULA-40-02",
+        "capacidad": 40,
+        "tipo": "Teoria"
+    },
+    {
+        "id": "AULA40-03",
+        "nombre": "AULA-40-03",
+        "capacidad": 40,
+        "tipo": "Teoria"
+    },
+    {
+        "id": "AULA40-04",
+        "nombre": "AULA-40-04",
+        "capacidad": 40,
+        "tipo": "Teoria"
+    },
+    {
+        "id": "AULA40-05",
+        "nombre": "AULA-40-05",
+        "capacidad": 40,
+        "tipo": "Teoria"
+    },
+    {
+        "id": "AULA40-06",
+        "nombre": "AULA-40-06",
+        "capacidad": 40,
+        "tipo": "Teoria"
+    }
+]
