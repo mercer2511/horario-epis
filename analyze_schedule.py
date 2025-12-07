@@ -140,6 +140,34 @@ def analyze():
                     if r1 == r2:
                         conflicts.append(f"ROOM CONFLICT: {day} - {r1} has overlapping classes: {s1['Curso']} and {s2['Curso']}")
 
+    # 8. Max Hours Per Week Check
+    prof_hours = defaultdict(float) # Hours (or slots) per professor
+    
+    for row in schedule:
+        prof_name = row['Profesor']
+        start_min = parse_time(row['Hora Inicio'])
+        end_min = parse_time(row['Hora Fin'])
+        duration_minutes = end_min - start_min
+        # Convert to hours. 
+        # CAUTION: Academic hours vs Clock hours.
+        # Data says `max_horas_semana`. Usually this means academic hours (45 min) or clock hours?
+        # Let's assume the limit is in academic hours count or simply count slots.
+        # The `Curso` has `horas_semanales`. The `Profesor` has `max_horas_semana`.
+        # `horas_semanales` is likely count of academic hours.
+        # So we should count slots (45 min blocks).
+        
+        # Duration in academic hours (approx)
+        # 45 min = 1 unit.
+        slots = round(duration_minutes / 45)
+        prof_hours[prof_name] += slots
+
+    for prof_name, total_slots in prof_hours.items():
+        prof_data = p_name_map.get(prof_name)
+        if prof_data:
+            max_h = prof_data['max_horas_semana']
+            if total_slots > max_h:
+                 conflicts.append(f"MAX HOURS VIOLATION: {prof_name} is assigned {total_slots} academic hours, max is {max_h}.")
+
     if not conflicts:
         print("VERIFICACIÓN EXITOSA: No se encontraron violaciones a las restricciones.")
     else:

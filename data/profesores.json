@@ -8,7 +8,7 @@
     {
         "id": "DOC002",
         "nombre": "William Lopez",
-        "max_horas_semana": 18,
+        "max_horas_semana": 22,
         "disponibilidad": {}
     },
     {
@@ -20,7 +20,7 @@
     {
         "id": "DOC004",
         "nombre": "Roger Diaz",
-        "max_horas_semana": 4,
+        "max_horas_semana": 16,
         "disponibilidad": {}
     },
     {
@@ -134,7 +134,7 @@
     {
         "id": "DOC023",
         "nombre": "Jose Sotelo",
-        "max_horas_semana": 23,
+        "max_horas_semana": 24,
         "disponibilidad": {}
     },
     {
@@ -182,7 +182,7 @@
     {
         "id": "DOC031",
         "nombre": "Yuri Medina",
-        "max_horas_semana": 6,
+        "max_horas_semana": 16,
         "disponibilidad": {}
     },
     {

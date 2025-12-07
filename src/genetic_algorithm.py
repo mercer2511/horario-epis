@@ -12,6 +12,16 @@ class GeneticAlgorithm:
         self.clases = clases
         self.config = config
         self.population: List[Horario] = []
+
+        # Turn definitions (start_slot, end_slot) inclusive of the range available
+        # Based on config: 0=08:00, 7=13:15(start)-14:00(end), 13=17:45, 18=21:30-22:15
+        self.TURN_RANGES = {
+            "MAÑANA": (0, 7),   # 08:00 - 14:00
+            "TARDE": (7, 18),   # 13:15 - 22:15 (User specified "hasta el final")
+            "NOCHE": (13, 18),  # 17:45 - 22:15
+            "NOCHE_A": (13, 18),
+            "NOCHE_B": (13, 18)
+        }
         
         # Pre-process group hierarchy for fast lookup
         self.group_ancestry = self._build_group_ancestry()
@@ -92,7 +102,21 @@ class GeneticAlgorithm:
             
             # Try to find a valid slot (simple retry mechanism)
             dia_idx = random.randint(0, num_days - 1)
-            start_slot_idx = random.randint(0, total_slots - num_slots)
+            
+            # Intelligent initialization: try to pick a slot in the group's turn
+            grupo = self.grupos[clase.grupo_id]
+            valid_range = self.TURN_RANGES.get(grupo.turno)
+            
+            if valid_range and random.random() < 0.8: # 80% chance to pick preferred turn
+                start, end = valid_range
+                # Ensure we have enough space for the class
+                effective_end = end - num_slots + 1 
+                if effective_end > start:
+                    start_slot_idx = random.randint(start, effective_end)
+                else:
+                    start_slot_idx = random.randint(0, total_slots - num_slots)
+            else:
+                start_slot_idx = random.randint(0, total_slots - num_slots)
             
             # Simple heuristic: try to avoid break overlap if possible, but allow it for now 
             # (fitness will punish it if we define it as a constraint)
@@ -172,6 +196,42 @@ class GeneticAlgorithm:
             if aula.capacidad < grupo.num_estudiantes:
                  score -= HARD_PENALTY
 
+            # 5. Turn Preference (Soft Constraint)
+            # Check if all slots fall within the preferred turn range
+            if grupo.turno in self.TURN_RANGES:
+                turn_start, turn_end = self.TURN_RANGES[grupo.turno]
+                # Slots are 0-indexed. 
+                # Range is inclusive [start, end].
+                # Session uses slots [start_slot_idx, start_slot_idx + num_slots - 1]
+                
+                s_start = sesion.start_slot_idx
+                s_end = sesion.start_slot_idx + sesion.num_slots - 1
+                
+                # Check if the session is essentially OUTSIDE the range
+                # We punish each slot that is outside the range
+                out_of_turn_slots = 0
+                for s_idx in range(s_start, s_end + 1):
+                    if not (turn_start <= s_idx <= turn_end):
+                        out_of_turn_slots += 1
+                
+                score -= (out_of_turn_slots * SOFT_PENALTY)
+
+        # 6. Global Professor Max Hours Check (Hard Constraint)
+        # We need to re-scan or track hours.
+        # Let's count total slots per professor
+        prof_hours = {}
+        for sesion in individual.sesiones:
+            if sesion.profesor_id not in prof_hours:
+                prof_hours[sesion.profesor_id] = 0
+            prof_hours[sesion.profesor_id] += sesion.num_slots
+            
+        for prof_id, total_slots in prof_hours.items():
+            max_h = self.profesores[prof_id].max_horas_semana
+            if total_slots > max_h:
+                # Heavy penalty for every slot over the limit
+                overage = total_slots - max_h
+                score -= (overage * HARD_PENALTY)
+
         individual.fitness = score
         return score
 
@@ -234,6 +294,18 @@ class GeneticAlgorithm:
             if aula.capacidad < grupo.num_estudiantes:
                  conflicts.append(f"CAPACITY CONFLICT: {aula.nombre} ({aula.capacidad}) too small for {grupo.id} ({grupo.num_estudiantes})")
 
+        # 5. Global Professor Max Hours Check
+        prof_hours = {}
+        for sesion in individual.sesiones:
+            if sesion.profesor_id not in prof_hours:
+                prof_hours[sesion.profesor_id] = 0
+            prof_hours[sesion.profesor_id] += sesion.num_slots
+            
+        for prof_id, total_slots in prof_hours.items():
+            max_h = self.profesores[prof_id].max_horas_semana
+            if total_slots > max_h:
+                conflicts.append(f"MAX HOURS CONFLICT: {self.profesores[prof_id].nombre} assigned {total_slots} slots, limit {max_h}")
+
         return list(set(conflicts)) # Remove duplicates
 
     def selection(self) -> Horario:
@@ -268,7 +340,24 @@ class GeneticAlgorithm:
                     sesion.dia_idx = random.randint(0, len(self.config['days']) - 1)
                 elif attr == 'slot':
                     max_slot = len(self.config['time_slots']) - sesion.num_slots
-                    sesion.start_slot_idx = random.randint(0, max_slot)
+                    grupo = self.grupos[clase.grupo_id]
+                    valid_range = self.TURN_RANGES.get(grupo.turno)
+                    
+                    if valid_range and random.random() < 0.7: # Bias mutation towards preferred turn
+                        start, end = valid_range
+                        effective_end = end - sesion.num_slots + 1
+                        if effective_end > start:
+                            # Clamp within valid bounds
+                            safe_start = max(0, start)
+                            safe_end = min(max_slot, effective_end)
+                            if safe_end >= safe_start:
+                                sesion.start_slot_idx = random.randint(safe_start, safe_end)
+                            else:
+                                sesion.start_slot_idx = random.randint(0, max_slot)
+                        else:
+                            sesion.start_slot_idx = random.randint(0, max_slot)
+                    else:
+                        sesion.start_slot_idx = random.randint(0, max_slot)
                 elif attr == 'aula':
                     eligible_rooms = self.classrooms_by_type.get(clase.tipo_aula, [])
                     if eligible_rooms:

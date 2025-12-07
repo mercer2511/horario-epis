@@ -73,6 +73,15 @@ def generate_html(cycle_num, output_path):
                 max_overlap = len(events)
         day_cols[day] = max_overlap
 
+    # Helper to generate consistent pastel color from string
+    def get_color(text):
+        import hashlib
+        hash_val = int(hashlib.md5(text.encode('utf-8')).hexdigest(), 16)
+        h = hash_val % 360
+        s = 70 + (hash_val % 20) # 70-90% saturation
+        l = 85 + (hash_val % 10) # 85-95% lightness
+        return f"hsl({h}, {s}%, {l}%)"
+
     # HTML Generation
     html = f"""
     <!DOCTYPE html>
@@ -89,8 +98,6 @@ def generate_html(cycle_num, output_path):
             .cell-content {{ 
                 padding: 2px; 
             }}
-            .lab {{ background-color: #e8f5e9; }}
-            .teoria {{ background-color: #e3f2fd; }}
             .break {{ background-color: #fff3e0; color: #e65100; font-weight: bold; height: 30px; }}
         </style>
     </head>
@@ -129,44 +136,23 @@ def generate_html(cycle_num, output_path):
                 continue
                 
             # If we have events, distribute them.
-            # Logic:
-            # - If 1 event and it's a "Full Turn" (heuristic: ends in -M or -T without -A/-B? Or just check if it's the only one and we have >1 cols?)
-            #   Actually, simpler: If 1 event and cols > 1, check if it should span.
-            #   If we have C1-M (parent) and cols=2, it should span.
-            #   If we have C1-M-A (section) and cols=2, it should be in col 1, and col 2 empty.
-            
-            # Let's try to fill columns.
-            # We have `len(events)` items.
-            # If len(events) == cols_needed: 1 per col.
-            # If len(events) < cols_needed:
-            #    Check if any event is a "Parent" group?
-            #    Or just fill left to right and leave rest empty?
-            #    User said "rellenar las celdas".
-            #    Let's use colspan if it's a single event in a multi-col day.
-            
             if len(events) == 1 and cols_needed > 1:
-                # Check if it's a parent group? 
-                # Or just always colspan for aesthetics if it's the only thing happening?
-                # "C1-M" implies full group. "C1-M-A" implies section.
-                # If it's C1-M-A, maybe we shouldn't colspan?
-                # But if C1-M-B is empty, maybe it's fine to colspan?
-                # User wants to see "divisions".
-                # Let's colspan ONLY if it looks like a parent group (no -A, -B suffix).
                 # Heuristic: Check if group ID ends with -A, -B, -C.
                 g_id = events[0]['Grupo']
                 is_section = g_id.endswith('-A') or g_id.endswith('-B') or g_id.endswith('-C')
                 
+                prof_name = events[0]['Profesor']
+                bg_color = get_color(prof_name)
+                
                 if not is_section:
                     # Full span
-                    bg = "lab" if events[0]['Tipo Aula'] == 'Laboratorio' else "teoria"
-                    html += f"<td colspan='{cols_needed}' class='{bg}'>"
-                    html += f"<strong>{events[0]['Curso']}</strong><br>{events[0]['Grupo']}<br>{events[0]['Profesor']}<br>{events[0]['Aula']}"
+                    html += f"<td colspan='{cols_needed}' style='background-color: {bg_color}'>"
+                    html += f"<strong>{events[0]['Curso']}</strong><br>{events[0]['Grupo']}<br>{prof_name}<br>{events[0]['Aula']}"
                     html += "</td>"
                 else:
                     # No span, fill first col, empty rest
-                    bg = "lab" if events[0]['Tipo Aula'] == 'Laboratorio' else "teoria"
-                    html += f"<td class='{bg}'>"
-                    html += f"<strong>{events[0]['Curso']}</strong><br>{events[0]['Grupo']}<br>{events[0]['Profesor']}<br>{events[0]['Aula']}"
+                    html += f"<td style='background-color: {bg_color}'>"
+                    html += f"<strong>{events[0]['Curso']}</strong><br>{events[0]['Grupo']}<br>{prof_name}<br>{events[0]['Aula']}"
                     html += "</td>"
                     for _ in range(cols_needed - 1):
                         html += "<td></td>"
@@ -175,9 +161,10 @@ def generate_html(cycle_num, output_path):
                 for idx in range(cols_needed):
                     if idx < len(events):
                         e = events[idx]
-                        bg = "lab" if e['Tipo Aula'] == 'Laboratorio' else "teoria"
-                        html += f"<td class='{bg}'>"
-                        html += f"<strong>{e['Curso']}</strong><br>{e['Grupo']}<br>{e['Profesor']}<br>{e['Aula']}"
+                        prof_name = e['Profesor']
+                        bg_color = get_color(prof_name)
+                        html += f"<td style='background-color: {bg_color}'>"
+                        html += f"<strong>{e['Curso']}</strong><br>{e['Grupo']}<br>{prof_name}<br>{e['Aula']}"
                         html += "</td>"
                     else:
                         html += "<td></td>"
