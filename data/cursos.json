@@ -27,7 +27,7 @@
     "horas_semanales": 4,
     "tipo": "Teoria",
     "profesores_ids": [
-      "DOC016"
+      "DOC004"
     ]
   },
   {
@@ -309,7 +309,8 @@
     "horas_semanales": 6,
     "tipo": "Teoria",
     "profesores_ids": [
-      "DOC025"
+      "DOC025",
+      "DOC035"
     ]
   },
   {

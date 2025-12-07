@@ -1,6 +1,7 @@
 import random
 import copy
 from typing import List, Dict, Set
+from collections import defaultdict
 from .model import Curso, Profesor, Aula, Horario, Sesion, Grupo, Clase
 
 class GeneticAlgorithm:
@@ -107,12 +108,16 @@ class GeneticAlgorithm:
             grupo = self.grupos[clase.grupo_id]
             valid_range = self.TURN_RANGES.get(grupo.turno)
             
-            if valid_range and random.random() < 0.8: # 80% chance to pick preferred turn
+            if valid_range and random.random() < 0.9: # 90% chance to pick preferred turn (increased from 0.8)
                 start, end = valid_range
-                # Ensure we have enough space for the class
                 effective_end = end - num_slots + 1 
                 if effective_end > start:
-                    start_slot_idx = random.randint(start, effective_end)
+                    # HEURISTIC: Strongly bias towards the VERY beginning of the turn (Early Start Preference)
+                    # 50% chance to pick exactly 'start'
+                    if random.random() < 0.5:
+                        start_slot_idx = start
+                    else:
+                        start_slot_idx = random.randint(start, effective_end)
                 else:
                     start_slot_idx = random.randint(0, total_slots - num_slots)
             else:
@@ -216,21 +221,41 @@ class GeneticAlgorithm:
                 
                 score -= (out_of_turn_slots * SOFT_PENALTY)
 
+        
         # 6. Global Professor Max Hours Check (Hard Constraint)
-        # We need to re-scan or track hours.
-        # Let's count total slots per professor
-        prof_hours = {}
+        prof_hours = defaultdict(float)
         for sesion in individual.sesiones:
-            if sesion.profesor_id not in prof_hours:
-                prof_hours[sesion.profesor_id] = 0
             prof_hours[sesion.profesor_id] += sesion.num_slots
             
         for prof_id, total_slots in prof_hours.items():
             max_h = self.profesores[prof_id].max_horas_semana
             if total_slots > max_h:
-                # Heavy penalty for every slot over the limit
-                overage = total_slots - max_h
-                score -= (overage * HARD_PENALTY)
+                score -= (total_slots - max_h) * HARD_PENALTY
+
+        # 7. Early Start Preference (Soft Constraint)
+        # Organize sessions by Group -> Day -> Start Slots
+        group_day_starts = defaultdict(lambda: defaultdict(list))
+        for s in individual.sesiones:
+            group_day_starts[s.clase_id][s.dia_idx].append(s.start_slot_idx)
+            
+        # Map class_id back to group info
+        class_group_map = {c.id: self.grupos[c.grupo_id] for c in self.clases}
+        
+        EARLY_START_PENALTY = 5 
+        
+        for clase_id, days_data in group_day_starts.items():
+            group = class_group_map[clase_id]
+            turn_start = 0 
+            if group.turno == 'TARDE': turn_start = 7
+            elif 'NOCHE' in group.turno: turn_start = 13
+            
+            for day, starts in days_data.items():
+                if not starts: continue
+                first_class = min(starts)
+                
+                if first_class > turn_start:
+                    gap = first_class - turn_start
+                    score -= gap * EARLY_START_PENALTY
 
         individual.fitness = score
         return score
@@ -343,7 +368,7 @@ class GeneticAlgorithm:
                     grupo = self.grupos[clase.grupo_id]
                     valid_range = self.TURN_RANGES.get(grupo.turno)
                     
-                    if valid_range and random.random() < 0.7: # Bias mutation towards preferred turn
+                    if valid_range and random.random() < 0.8: # Bias mutation towards preferred turn (increased from 0.7)
                         start, end = valid_range
                         effective_end = end - sesion.num_slots + 1
                         if effective_end > start:
@@ -351,7 +376,11 @@ class GeneticAlgorithm:
                             safe_start = max(0, start)
                             safe_end = min(max_slot, effective_end)
                             if safe_end >= safe_start:
-                                sesion.start_slot_idx = random.randint(safe_start, safe_end)
+                                # BIAS: 50% chance to jump to the start of the turn
+                                if random.random() < 0.5:
+                                    sesion.start_slot_idx = safe_start
+                                else:
+                                    sesion.start_slot_idx = random.randint(safe_start, safe_end)
                             else:
                                 sesion.start_slot_idx = random.randint(0, max_slot)
                         else:
