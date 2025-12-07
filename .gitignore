@@ -12,6 +12,7 @@ pip-delete-this-directory.txt
 .vscode/
 .git/
 .gitignore
+test_connection.py
 # IMPORTANTE: No incluir las credenciales en la imagen
 credentials.json
 horario_generado.csv

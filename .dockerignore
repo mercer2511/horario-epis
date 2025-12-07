@@ -1,6 +1,7 @@
 .git
 .gitignore
 venv/
+scripts/
 __pycache__/
 horario_generado.csv
 diagnostics_output.txt
