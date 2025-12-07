@@ -1,0 +1,27 @@
+🔍 DIAGNOSTICO DE DATOS
+✅ Datos cargados correctamente.
+
+--- Inspección de Curso 35 (AUDITORIA DE SISTEMAS) ---
+ID: 35
+Nombre: AUDITORIA DE SISTEMAS
+Profesores IDs autorizados: ['DOC035']
+✅ DOC031 NO está en la lista de autorizados.
+✅ DOC035 (Joel Vilca) ESTÁ en la lista de autorizados.
+
+--- Inspección de Profesor DOC031 ---
+ID: DOC031
+Nombre: Yuri Medina
+
+--- Inspección de Clases del Curso 35 ---
+Clase ID: 100, Grupo: C10-NA, Duración: 5, Tipo Aula: Teoria
+Clase ID: 101, Grupo: C10-NB1, Duración: 5, Tipo Aula: Teoria
+
+--- Inspección de Violación de Break ---
+Curso 32: PRACTICAS PREPROFESIONALES II, Horas Semanales: 8
+  > Clase ID: 92, Grupo: C10-NA, Turno: NOCHE_A, Duración Bloques: 8
+  > Clase ID: 93, Grupo: C10-NB1, Turno: NOCHE_B, Duración Bloques: 8
+
+--- Configuración de Breaks ---
+Time Slots: 19
+Break Slots Indices: [6]
+  > Break Slot 6: 12:30-13:15

@@ -1,2 +1,18 @@
-credentials.json
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
 venv
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.idea/
+.vscode/
+.git/
+.gitignore
+# IMPORTANTE: No incluir las credenciales en la imagen
+credentials.json
+horario_generado.csv
+scripts/

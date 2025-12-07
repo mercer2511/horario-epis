@@ -1,26 +1,34 @@
 import csv
-import json
 import os
+import sys
 from collections import defaultdict
 
-def load_json(base_path, subdir, filename):
-    with open(os.path.join(base_path, subdir, filename), 'r', encoding='utf-8') as f:
-        return json.load(f)
+# Agregamos src al path para poder importar los módulos
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-def generate_html(cycle_num, output_path):
+from src.data_loader import load_data, load_config
+
+# Configuración de conexión (Misma que en main.py)
+SPREADSHEET_NAME = "INFORMACION_HORARIOS"
+CREDENTIALS_FILE = "credentials.json"
+
+def generate_html(cycle_num, output_path, grupos, config):
     base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
-    # Load data
-    grupos = load_json(base_path, 'data', 'grupos.json')
-    config = load_json(base_path, '', 'config.json')
+    # 1. Filtrar grupos para este ciclo
+    # NOTA: Ahora 'grupos' es una lista de Objetos, usamos notación de punto (.ciclo)
+    # Convertimos cycle_num a string o int según corresponda para comparar
+    cycle_groups = [g for g in grupos if str(g.ciclo) == str(cycle_num)]
+    cycle_group_ids = set(g.id for g in cycle_groups)
     
-    # Filter groups for this cycle
-    cycle_groups = [g for g in grupos if g['ciclo'] == cycle_num]
-    cycle_group_ids = set(g['id'] for g in cycle_groups)
-    
-    # Load schedule
+    # 2. Cargar horario desde el CSV generado (esto sigue igual)
     schedule = []
     csv_path = os.path.join(base_path, 'horario_generado.csv')
+    
+    if not os.path.exists(csv_path):
+        print(f"Error: No se encontró {csv_path}. Ejecuta main.py primero.")
+        return
+
     with open(csv_path, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
@@ -33,7 +41,7 @@ def generate_html(cycle_num, output_path):
         start, end = slot.split('-')
         slot_map[start] = i
 
-    # 1. Determine columns per day
+    # 3. Determine columns per day
     # Map: Day -> Slot -> List of Rows
     day_slot_events = defaultdict(lambda: defaultdict(list))
     
@@ -49,17 +57,21 @@ def generate_html(cycle_num, output_path):
         duration = 0
         curr = start_idx
         while curr < len(config['time_slots']):
-            s_end = config['time_slots'][curr].split('-')[1]
-            duration += 1
-            if s_end == end_time: break
-            curr += 1
+            # Manejo seguro del split por si el formato falla
+            try:
+                s_end = config['time_slots'][curr].split('-')[1]
+                duration += 1
+                if s_end == end_time: break
+                curr += 1
+            except IndexError:
+                break
             
-        # Add to all covered slots (NO ROWSPAN, so we need it in every slot)
+        # Add to all covered slots
         for d in range(duration):
             if start_idx + d < len(config['time_slots']):
                 day_slot_events[day][start_idx + d].append(row)
 
-    # Calculate max overlap per day to determine columns
+    # Calculate max overlap per day
     day_cols = {}
     days = config['days']
     
@@ -67,49 +79,33 @@ def generate_html(cycle_num, output_path):
         max_overlap = 1
         for slot_idx in range(len(config['time_slots'])):
             events = day_slot_events[day][slot_idx]
-            # We need to count how many distinct "lanes" we need.
-            # If we have 2 events, we need 2 cols.
             if len(events) > max_overlap:
                 max_overlap = len(events)
         day_cols[day] = max_overlap
 
-    # --- IMPROVED COLOR PALETTE (EXTENDED) ---
+    # --- COLOR PALETTE ---
     PALETTE = [
-        "hsl(0, 85%, 90%)", "hsl(10, 85%, 90%)", "hsl(20, 85%, 90%)", "hsl(30, 85%, 90%)", 
-        "hsl(40, 85%, 90%)", "hsl(50, 85%, 90%)", "hsl(60, 85%, 90%)", "hsl(70, 85%, 90%)",
-        "hsl(80, 85%, 90%)", "hsl(90, 85%, 90%)", "hsl(100, 85%, 90%)", "hsl(110, 85%, 90%)",
-        "hsl(120, 85%, 90%)", "hsl(130, 85%, 90%)", "hsl(140, 85%, 90%)", "hsl(150, 85%, 90%)",
-        "hsl(160, 85%, 90%)", "hsl(170, 85%, 90%)", "hsl(180, 85%, 90%)", "hsl(190, 85%, 90%)",
-        "hsl(200, 85%, 90%)", "hsl(210, 85%, 90%)", "hsl(220, 85%, 90%)", "hsl(230, 85%, 90%)",
-        "hsl(240, 85%, 90%)", "hsl(250, 85%, 90%)", "hsl(260, 85%, 90%)", "hsl(270, 85%, 90%)",
-        "hsl(280, 85%, 90%)", "hsl(290, 85%, 90%)", "hsl(300, 85%, 90%)", "hsl(310, 85%, 90%)",
-        "hsl(320, 85%, 90%)", "hsl(330, 85%, 90%)", "hsl(340, 85%, 90%)", "hsl(350, 85%, 90%)",
-        # Varied Saturation/Lightness for contrast
-        "hsl(15, 60%, 85%)", "hsl(45, 60%, 85%)", "hsl(75, 60%, 85%)", "hsl(105, 60%, 85%)",
-        "hsl(135, 60%, 85%)", "hsl(165, 60%, 85%)", "hsl(195, 60%, 85%)", "hsl(225, 60%, 85%)",
-        "hsl(255, 60%, 85%)", "hsl(285, 60%, 85%)", "hsl(315, 60%, 85%)", "hsl(345, 60%, 85%)",
-        "hsl(0, 50%, 92%)", "hsl(120, 50%, 92%)", "hsl(240, 50%, 92%)", "hsl(60, 50%, 92%)",
-        "hsl(180, 50%, 92%)", "hsl(300, 50%, 92%)", "hsl(30, 50%, 88%)", "hsl(210, 50%, 88%)"
+        "hsl(0, 85%, 90%)", "hsl(20, 85%, 90%)", "hsl(40, 85%, 90%)", "hsl(60, 85%, 90%)",
+        "hsl(80, 85%, 90%)", "hsl(100, 85%, 90%)", "hsl(120, 85%, 90%)", "hsl(140, 85%, 90%)",
+        "hsl(160, 85%, 90%)", "hsl(180, 85%, 90%)", "hsl(200, 85%, 90%)", "hsl(220, 85%, 90%)",
+        "hsl(240, 85%, 90%)", "hsl(260, 85%, 90%)", "hsl(280, 85%, 90%)", "hsl(300, 85%, 90%)",
+        "hsl(320, 85%, 90%)", "hsl(340, 85%, 90%)",
+        "hsl(15, 60%, 85%)", "hsl(135, 60%, 85%)", "hsl(255, 60%, 85%)"
     ]
 
     def get_color(text):
         import hashlib
-        # Use SHA256 for better distribution than MD5
         hash_val = int(hashlib.sha256(text.encode('utf-8')).hexdigest(), 16)
         return PALETTE[hash_val % len(PALETTE)]
 
-    # --- LANE ASSIGNMENT (COLUMN FIX) ---
-    # day -> event_id (row object id) -> lane_index
+    # --- LANE ASSIGNMENT ---
     event_lanes = {} 
     day_max_lanes = defaultdict(int)
 
     for day in days:
-        # Get all unique events for this day
-        # Flatten the day_slot_events for this day to get unique rows
         unique_events = []
         seen_ids = set()
         
-        # Collect all events happening today
         for slot_idx in range(len(config['time_slots'])):
             for row in day_slot_events[day][slot_idx]:
                 rid = id(row)
@@ -117,7 +113,6 @@ def generate_html(cycle_num, output_path):
                     seen_ids.add(rid)
                     unique_events.append(row)
         
-        # Sort by Start Time (using slot index)
         def get_start_slot(r):
             if r['Hora Inicio'] in slot_map:
                 return slot_map[r['Hora Inicio']]
@@ -125,23 +120,21 @@ def generate_html(cycle_num, output_path):
         
         unique_events.sort(key=lambda x: (get_start_slot(x), x['Grupo']))
         
-        # Greedy Interval Packing
-        lanes = [] # stores end_slot_index of the last event in each lane
-        
+        lanes = [] 
         for event in unique_events:
             start_slot = get_start_slot(event)
-            # Duration
             end_time = event['Hora Fin']
             duration = 0
             curr = start_slot
             while curr < len(config['time_slots']):
-                s_end = config['time_slots'][curr].split('-')[1]
-                duration += 1
-                if s_end == end_time: break
-                curr += 1
+                try:
+                    s_end = config['time_slots'][curr].split('-')[1]
+                    duration += 1
+                    if s_end == end_time: break
+                    curr += 1
+                except IndexError: break
             end_slot = start_slot + duration
             
-            # Find a lane
             assigned_lane = -1
             for l_idx, lane_end in enumerate(lanes):
                 if start_slot >= lane_end:
@@ -186,8 +179,10 @@ def generate_html(cycle_num, output_path):
         html += f"<th colspan='{cols}'>{day}</th>"
     html += "</tr></thead><tbody>"
 
+    break_slots_ints = config.get('break_slots', [])
+
     for i, slot in enumerate(config['time_slots']):
-        if i in config.get('break_slots', []):
+        if i in break_slots_ints:
              total_cols = sum(day_max_lanes.values()) + 1
              html += f"<tr class='break'><td class='slot-time'>{slot}</td><td colspan='{total_cols - 1}'>REFRIGERIO</td></tr>"
              continue
@@ -198,21 +193,11 @@ def generate_html(cycle_num, output_path):
             events_in_slot = day_slot_events[day][i]
             max_day_cols = day_max_lanes[day]
             
-            # Optimization: If only 1 event and it wants to span (e.g. Theory for whole group)
-            # We can check if it effectively "owns" all lanes or if we just want to force it.
-            # But adhering to lanes is safer for consistency. 
-            # However, user liked the merged look for theory.
-            
-            # Simple heuristic: If there is ONLY 1 event in this slot AND max_day_cols > 1
-            # AND this event is NOT a split section (based on -A, -B suffix convention or just solely occupying)
-            # We check if it truly conflicts with nothing else in this slot (already true as len=1).
-            # We can define a "Full Width" override.
-            
+            # Heuristic for full width events
             single_event_override = False
             if len(events_in_slot) == 1 and max_day_cols > 1:
                  e = events_in_slot[0]
                  g_id = e['Grupo']
-                 # Heuristic: If it does NOT look like a subgroup Section A/B
                  is_section = g_id.endswith('-A') or g_id.endswith('-B') or g_id.endswith('-C')
                  if not is_section:
                      single_event_override = True
@@ -223,8 +208,6 @@ def generate_html(cycle_num, output_path):
                      html += "</td>"
 
             if not single_event_override:
-                # Render by Lane
-                # Create a map of lane -> event for this slot
                 lane_map = {}
                 for e in events_in_slot:
                     l_idx = event_lanes.get(id(e), 0)
@@ -255,14 +238,22 @@ def generate_html(cycle_num, output_path):
     print(f"Generated {output_path}")
 
 if __name__ == "__main__":
-    base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    grupos = load_json(base_path, 'data', 'grupos.json')
-    
-    # Get unique cycles
-    cycles = sorted(list(set(g['ciclo'] for g in grupos)))
-    
-    print(f"Generando horarios para los ciclos: {cycles}")
-    
-    for cycle in cycles:
-        output_file = f"horario_ciclo_{cycle}.html"
-        generate_html(cycle, output_file)
+    print(f"Conectando a Google Sheets ({SPREADSHEET_NAME})...")
+    try:
+        # Cargamos los datos una sola vez
+        cursos, profesores, aulas, grupos, clases = load_data(SPREADSHEET_NAME, CREDENTIALS_FILE)
+        config = load_config(SPREADSHEET_NAME, CREDENTIALS_FILE)
+        
+        # Obtener ciclos únicos usando notación de objeto (.ciclo)
+        cycles = sorted(list(set(g.ciclo for g in grupos)))
+        
+        print(f"Generando visualización para los ciclos: {cycles}")
+        
+        for cycle in cycles:
+            output_file = f"horario_ciclo_{cycle}.html"
+            generate_html(cycle, output_file, grupos, config)
+            
+        print("✅ ¡Visualización completada!")
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
