@@ -80,6 +80,26 @@ Ejecuta el Algoritmo Genético bajo demanda. Este proceso puede tardar unos segu
     *   `401 Unauthorized`: Token inválido o expirado.
     *   `500 Internal Server Error`: Fallo en el algoritmo o conexión a Sheets.
 
+### 4. Guardar Horario
+Persiste el horario validado en Google Sheets (Hoja 'Resultados').
+
+*   **Endpoint:** `POST /save`
+*   **Auth:** Requiere Token Bearer de Firebase.
+*   **Header:** `Authorization: Bearer <FIREBASE_ID_TOKEN>`
+*   **Body:**
+    ```json
+    {
+      "schedule": [ ... lista de objetos SessionData obtenida de /generate ... ]
+    }
+    ```
+*   **Respuesta Exitosa:**
+    ```json
+    {
+      "status": "Guardado exitosamente",
+      "records": 103
+    }
+    ```
+
 ---
 
 ## 🔐 Autenticación

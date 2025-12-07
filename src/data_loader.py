@@ -182,3 +182,46 @@ def load_config(spreadsheet_name: str, credentials_path: str = 'credentials.json
             config[k] = v
 
     return config
+
+def save_schedule_to_sheet(schedule_data: List[Dict[str, Any]], spreadsheet_name: str, credentials_path: str = 'credentials.json'):
+    """
+    Guarda el horario generado en la hoja 'Resultados'.
+    Crea la hoja si no existe, limpia contenido previo y escribe nuevos datos.
+    """
+    client = _get_gspread_client(credentials_path)
+    try:
+        sh = client.open(spreadsheet_name)
+    except gspread.SpreadsheetNotFound:
+        raise ValueError(f"No se encontró la hoja de cálculo: {spreadsheet_name}")
+
+    # Buscar o crear hoja "Resultados"
+    try:
+        ws = sh.worksheet("Resultados")
+        ws.clear()
+    except gspread.WorksheetNotFound:
+        ws = sh.add_worksheet(title="Resultados", rows=1000, cols=10)
+
+    # Preparar datos para escritura por lotes
+    headers = ["Día", "Inicio", "Fin", "Curso", "Grupo", "Aula", "Profesor", "Tipo Aula"]
+    
+    # Convertir lista de dicts a lista de listas (filas)
+    rows = [headers]
+    for item in schedule_data:
+        # Asegurar el orden de columnas
+        row = [
+            item.get('dia', ''),
+            item.get('hora_inicio', ''),
+            item.get('hora_fin', ''),
+            item.get('curso', ''),
+            item.get('grupo', ''),
+            item.get('aula', ''),
+            item.get('profesor', ''),
+            item.get('tipo_aula', '')
+        ]
+        rows.append(row)
+
+    # Escribir todo de una vez (Batch Update)
+    ws.update(rows)
+    
+    # Formato opcional: Congelar primera fila (headers)
+    ws.freeze(rows=1)

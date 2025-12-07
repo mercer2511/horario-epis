@@ -48,7 +48,8 @@ class DataSummary(BaseModel):
 
 # --- Endpoints ---
 
-@app.get("/", tags=["General"])
+# Cambiamos @app.get por @app.api_route para aceptar GET y HEAD
+@app.api_route("/", methods=["GET", "HEAD"], tags=["General"])
 def read_root():
     return {"status": "online", "system": "HorarioEPIS AI"}
 
@@ -142,6 +143,32 @@ def run_genetic_algorithm(current_user: str = Depends(get_current_user)):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Fallo en algoritmo: {str(e)}")
+
+class SaveRequest(BaseModel):
+    schedule: List[SessionData]
+
+@app.post("/save", tags=["Persistencia"])
+def save_schedule(payload: SaveRequest, current_user: str = Depends(get_current_user)):
+    """
+    Guarda el horario validado en Google Sheets (Hoja 'Resultados').
+    """
+    print(f"💾 Usuario {current_user} guardando resultados...")
+    
+    # Convertir modelos Pydantic a lista de dicts
+    data_to_save = [item.model_dump() for item in payload.schedule]
+    
+    try:
+        # Import lazy para evitar dependencia circular si estuviera arriba (aunque aquí no hay)
+        from src.data_loader import save_schedule_to_sheet
+        
+        save_schedule_to_sheet(data_to_save, SPREADSHEET_NAME, CREDENTIALS_FILE)
+        
+        return {"status": "Guardado exitosamente", "records": len(data_to_save)}
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error al guardar: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run("src.api:app", host="127.0.0.1", port=8000, reload=True)
