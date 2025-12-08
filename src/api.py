@@ -2,6 +2,7 @@ import os
 import sys
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware # <--- 1. IMPORTAR ESTO
 from pydantic import BaseModel
 import uvicorn
 
@@ -16,6 +17,23 @@ app = FastAPI(
     title="API Generador de Horarios EPIS",
     version="1.1.0"
 )
+
+CONFIGURAR CORS
+origins = [
+    "http://localhost:5173", # Vite por defecto
+    "http://localhost:5174", # Tu puerto actual
+    "http://localhost:3000", # React clásico
+    "*"                      # Permitir todo (Útil para desarrollo y evitar dolores de cabeza)
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],      # En producción puedes poner solo tu dominio real
+    allow_credentials=True,
+    allow_methods=["*"],      # Permitir GET, POST, OPTIONS, etc.
+    allow_headers=["*"],      # Permitir el header Authorization (¡CRUCIAL PARA FIREBASE!)
+)
+# ------------------------------------------------
 
 # Constantes
 SPREADSHEET_NAME = "INFORMACION_HORARIOS"
