@@ -5,6 +5,21 @@ from collections import defaultdict
 from .model import Curso, Profesor, Aula, Horario, Sesion, Grupo, Clase
 from .fitness import FitnessEvaluator
 
+# --- Parallel Execution Helpers ---
+_worker_evaluator = None
+
+def _init_worker(evaluator):
+    """Inicializa el worker con el evaluador (una sola vez por proceso)."""
+    global _worker_evaluator
+    _worker_evaluator = evaluator
+
+def _evaluate_wrapper(individual):
+    """Función top-level para evaluar individuo usando el evaluador global del worker."""
+    if _worker_evaluator:
+         # El método evaluate devuelve un float
+        return _worker_evaluator.evaluate(individual)
+    return -999999.0
+
 class GeneticAlgorithm:
     def __init__(self, cursos: List[Curso], profesores: List[Profesor], aulas: List[Aula], grupos: List[Grupo], clases: List[Clase], config: dict):
         self.cursos = {c.id: c for c in cursos}
@@ -105,7 +120,7 @@ class GeneticAlgorithm:
         return Horario(sesiones=sesiones)
 
     def calculate_fitness(self, individual: Horario) -> float:
-        # Delegate to FitnessEvaluator
+        # Delegate to FitnessEvaluator (used for serialfallback or init)
         individual.fitness = self.evaluator.evaluate(individual)
         return individual.fitness
 
@@ -185,48 +200,59 @@ class GeneticAlgorithm:
         self.initialize_population()
         
         max_gens = self.config['max_generations']
+
+        # Import local to avoid top-level overhead if not used
+        print(f"🚀 Iniciando evolución paralela con 4 workers...")
         
-        for generation in range(max_gens):
-            # Check Cancellation
-            if should_cancel and should_cancel():
-                print("🛑 Genetic Algorithm cancelled by user.")
-                return None
+        with ProcessPoolExecutor(max_workers=4, initializer=_init_worker, initargs=(self.evaluator,)) as executor:
+            
+            for generation in range(max_gens):
+                # Check Cancellation
+                if should_cancel and should_cancel():
+                    print("🛑 Genetic Algorithm cancelled by user.")
+                    return None
 
-            # Calculate fitness for all
-            for ind in self.population:
-                self.calculate_fitness(ind)
-            
-            # Sort to find best
-            self.population.sort(key=lambda x: x.fitness, reverse=True)
-            best_fitness = self.population[0].fitness
-            
-            # Update Progress every 5 generations or first/last
-            if on_progress and (generation % 5 == 0 or generation == max_gens - 1):
-                on_progress(generation, best_fitness)
-            
-            if generation % 10 == 0:
-                print(f"Generation {generation}: Best Fitness = {best_fitness}")
+                # PARALLEL FITNESS EVALUATION
+                # Map returns results in order
+                results = list(executor.map(_evaluate_wrapper, self.population))
                 
-            if best_fitness == 0: 
-                print("Solution found!")
-                break
+                # Assign fitness back to individuals
+                for ind, fit in zip(self.population, results):
+                    ind.fitness = fit
+                
+                # Sort to find best
+                self.population.sort(key=lambda x: x.fitness, reverse=True)
+                best_fitness = self.population[0].fitness
+                
+                # Update Progress every 5 generations or first/last
+                if on_progress and (generation % 5 == 0 or generation == max_gens - 1):
+                    on_progress(generation, best_fitness)
+                
+                if generation % 10 == 0:
+                    print(f"Generation {generation}: Best Fitness = {best_fitness}")
+                    
+                if best_fitness == 0: 
+                    print("Solution found!")
+                    break
 
-            new_population = []
+                new_population = []
+                
+                # Elitism
+                new_population.extend(copy.deepcopy(self.population[:self.config['elitism_count']]))
+                
+                # Generate rest
+                while len(new_population) < self.config['population_size']:
+                    parent1 = self.selection()
+                    parent2 = self.selection()
+                    child = self.crossover(parent1, parent2)
+                    self.mutation(child)
+                    new_population.append(child)
+                
+                self.population = new_population
             
-            # Elitism
-            new_population.extend(copy.deepcopy(self.population[:self.config['elitism_count']]))
-            
-            # Generate rest
-            while len(new_population) < self.config['population_size']:
-                parent1 = self.selection()
-                parent2 = self.selection()
-                child = self.crossover(parent1, parent2)
-                self.mutation(child)
-                new_population.append(child)
-            
-            self.population = new_population
-            
-        # Final evaluation
+        # Final evaluation (Serial or Parallel, reusing pool is cleaner but we exited context)
+        # For simplicity and given population size is small, serial final pass or reuse logic.
+        # Since we are out of context, let's do serial or minimal overhead.
         for ind in self.population:
             self.calculate_fitness(ind)
         self.population.sort(key=lambda x: x.fitness, reverse=True)
