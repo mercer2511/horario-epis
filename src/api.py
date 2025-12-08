@@ -1,7 +1,8 @@
-import os
 import sys
-from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Depends
+import uuid
+from typing import List, Optional, Dict
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks # <--- BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware # <--- 1. IMPORTAR ESTO
 from pydantic import BaseModel
 import uvicorn
@@ -38,6 +39,9 @@ app.add_middleware(
 # Constantes
 SPREADSHEET_NAME = "INFORMACION_HORARIOS"
 CREDENTIALS_FILE = "credentials.json"
+
+# --- Sistema de Jobs (En memoria para Demo/Cloud Run Instance Single) ---
+jobs: Dict[str, Dict] = {} 
 
 # --- Modelos de Datos (JSON Response) ---
 
@@ -84,45 +88,57 @@ def get_data_summary():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
-@app.post("/generate", response_model=ScheduleResponse, tags=["Algoritmo"])
-def run_genetic_algorithm(current_user: str = Depends(get_current_user)):
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Fallo en algoritmo: {str(e)}")
+
+# --- Async GA Task Wrapper ---
+def run_ga_bg_task(job_id: str):
     """
-    Ejecuta el algoritmo y devuelve el horario estructurado en JSON.
+    Ejecuta el GA en segundo plano y actualiza el diccionario global 'jobs'.
     """
-    print(f"🚀 Usuario {current_user} solicitando generación...")
-    
     try:
+        print(f"🔄 [Job {job_id}] Iniciando tarea en segundo plano...")
+        
         # 1. Cargar datos
         config = load_config(SPREADSHEET_NAME, CREDENTIALS_FILE)
         cursos, profesores, aulas, grupos, clases = load_data(SPREADSHEET_NAME, CREDENTIALS_FILE)
         
+        # Definir callback para reportar progreso
+        max_gens = config['max_generations']
+        
+        def on_progress_update(generation, fitness):
+            percent = int((generation / max_gens) * 100)
+            jobs[job_id]["progress"] = percent
+            jobs[job_id]["fitness"] = fitness
+            # print(f"Job {job_id}: {percent}% (Fit: {fitness})")
+
         # 2. Ejecutar GA
         ga = GeneticAlgorithm(cursos, profesores, aulas, grupos, clases, config)
-        best_schedule = ga.evolve()
+        
+        # Llamamos a evolve pasando el callback
+        best_schedule = ga.evolve(on_progress=on_progress_update)
         conflicts = ga.get_conflicts(best_schedule)
         
-        # 3. Procesar el resultado para el Frontend (Transformar IDs a Nombres)
+        # 3. Procesar resultado
         json_output = []
         days = config['days']
         slots = config['time_slots']
         
-        # Ordenar sesiones para que salgan ordenadas en el JSON
         def get_sort_key(s):
-            # Necesitamos buscar la clase para saber el grupo
             c_obj = next((c for c in clases if c.id == s.clase_id), None)
             return (s.dia_idx, s.start_slot_idx, c_obj.grupo_id if c_obj else "")
 
         sorted_sessions = sorted(best_schedule.sesiones, key=get_sort_key)
 
         for s in sorted_sessions:
-            # Buscar objetos relacionales
             clase = next(c for c in clases if c.id == s.clase_id)
             curso = next(c for c in cursos if c.id == clase.curso_id)
             prof = next(p for p in profesores if p.id == s.profesor_id)
             aula = next(a for a in aulas if a.id == s.aula_id)
             grupo = next(g for g in grupos if g.id == clase.grupo_id)
             
-            # Calcular horas legibles
             start_time = "ERROR"
             end_time = "ERROR"
             
@@ -134,7 +150,6 @@ def run_genetic_algorithm(current_user: str = Depends(get_current_user)):
                 else:
                     end_time = "OUT_OF_BOUNDS"
             
-            # Crear objeto de sesión para la respuesta
             session_data = SessionData(
                 dia=days[s.dia_idx],
                 hora_inicio=start_time,
@@ -146,21 +161,71 @@ def run_genetic_algorithm(current_user: str = Depends(get_current_user)):
                 tipo_aula=aula.tipo
             )
             json_output.append(session_data)
-
-        # 4. Retornar respuesta completa
+            
         status_msg = "Exito" if not conflicts else "Con Conflictos"
         
-        return {
+        # 4. Guardar resultado final en el estado del job
+        jobs[job_id]["status"] = "completed"
+        jobs[job_id]["progress"] = 100
+        jobs[job_id]["result"] = {
             "status": status_msg,
             "fitness": best_schedule.fitness,
             "conflicts": conflicts,
-            "schedule": json_output # <--- Aquí van los datos reales
+            "schedule": [item.model_dump() for item in json_output]
         }
-
+        print(f"✅ [Job {job_id}] Completado exitosamente.")
+        
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Fallo en algoritmo: {str(e)}")
+        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["error"] = str(e)
+        print(f"❌ [Job {job_id}] Falló: {e}")
+
+class JobResponse(BaseModel):
+    job_id: str
+    status: str
+
+@app.post("/generate", response_model=JobResponse, tags=["Algoritmo"])
+def start_genetic_algorithm(background_tasks: BackgroundTasks, current_user: str = Depends(get_current_user)):
+    """
+    Inicia la generación en segundo plano y devuelve un Job ID.
+    Usa GET /progress/{job_id} para ver el estado.
+    """
+    job_id = str(uuid.uuid4())
+    
+    # Inicializar estado del job
+    jobs[job_id] = {
+        "status": "running",
+        "progress": 0,
+        "fitness": 0.0,
+        "result": None,
+        "user": current_user
+    }
+    
+    # Encolar tarea en segundo plano
+    background_tasks.add_task(run_ga_bg_task, job_id)
+    
+    return {"job_id": job_id, "status": "started"}
+
+@app.get("/progress/{job_id}", tags=["Algoritmo"])
+def get_job_progress(job_id: str, current_user: str = Depends(get_current_user)):
+    """
+    Devuelve el progreso del algoritmo.
+    """
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job no encontrado")
+        
+    job = jobs[job_id]
+    
+    return {
+        "job_id": job_id,
+        "status": job["status"],
+        "progress": job.get("progress", 0),
+        "fitness": job.get("fitness", 0),
+        "result": job.get("result"), # Será null mientras corre, y tendrá el horario al final
+        "error": job.get("error")
+    }
 
 class SaveRequest(BaseModel):
     schedule: List[SessionData]

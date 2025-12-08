@@ -181,10 +181,12 @@ class GeneticAlgorithm:
                     if eligible_profs:
                         sesion.profesor_id = random.choice(eligible_profs)
 
-    def evolve(self):
+    def evolve(self, on_progress: callable = None):
         self.initialize_population()
         
-        for generation in range(self.config['max_generations']):
+        max_gens = self.config['max_generations']
+        
+        for generation in range(max_gens):
             # Calculate fitness for all
             for ind in self.population:
                 self.calculate_fitness(ind)
@@ -192,6 +194,10 @@ class GeneticAlgorithm:
             # Sort to find best
             self.population.sort(key=lambda x: x.fitness, reverse=True)
             best_fitness = self.population[0].fitness
+            
+            # Update Progress every 5 generations or first/last
+            if on_progress and (generation % 5 == 0 or generation == max_gens - 1):
+                on_progress(generation, best_fitness)
             
             if generation % 10 == 0:
                 print(f"Generation {generation}: Best Fitness = {best_fitness}")
