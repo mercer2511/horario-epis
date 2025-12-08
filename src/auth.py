@@ -1,50 +1,52 @@
 import os
+import json
 import firebase_admin
 from firebase_admin import auth, credentials
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-# Esquema de seguridad: Espera un header "Authorization: Bearer <token>"
 security = HTTPBearer()
 
 def init_firebase():
-    """Inicializa la app de Firebase si no existe ya."""
+    """
+    Inicializa la app de Firebase usando explícitamente la variable de entorno
+    GCP_CREDENTIALS_JSON para evitar conflictos de proyectos en Cloud Run.
+    """
     try:
         if not firebase_admin._apps:
-            # En Cloud Run, esto usa las credenciales por defecto del servicio automáticamente
-            # En local, busca la variable GOOGLE_APPLICATION_CREDENTIALS
-            cred = credentials.ApplicationDefault()
-            firebase_admin.initialize_app(cred)
+            # 1. Buscamos la variable que ya configuraste en Cloud Run
+            creds_json = os.environ.get('GCP_CREDENTIALS_JSON')
+            
+            if creds_json:
+                # Si existe, parseamos el JSON y creamos credenciales explícitas
+                cred_dict = json.loads(creds_json)
+                cred = credentials.Certificate(cred_dict)
+                firebase_admin.initialize_app(cred)
+                print("✅ Firebase inicializado con GCP_CREDENTIALS_JSON")
+            else:
+                # Fallback para local si tienes el archivo físico
+                print("⚠️ No se detectó GCP_CREDENTIALS_JSON, buscando ApplicationDefault...")
+                cred = credentials.ApplicationDefault()
+                firebase_admin.initialize_app(cred)
+                
     except Exception as e:
-        print(f"⚠️ Advertencia Firebase: {e}")
+        # Imprimimos el error real para verlo en los logs de Cloud Run si falla
+        print(f"❌ CRITICAL ERROR inicializando Firebase: {str(e)}")
+        # No hacemos raise aquí para no matar el import, pero fallará al usarlo.
 
-# Inicializamos al importar el módulo
+# Inicializamos al importar
 init_firebase()
 
 def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security)):
-    """
-    Valida el token JWT de Firebase.
-    Retorna el UID del usuario si es válido.
-    """
+    """Valida el token JWT."""
     token = creds.credentials
     try:
-        # En modo desarrollo local, si no quieres validar tokens reales cada vez,
-        # podrías poner un "bypass" aquí, pero por seguridad lo dejamos estricto.
-        
-        # Verifica la firma del token con los servidores de Google
         decoded_token = auth.verify_id_token(token)
         uid = decoded_token['uid']
         return uid
-        
-    except auth.ExpiredIdTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="El token ha expirado. Por favor inicia sesión nuevamente.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciales inválidas",
+            detail="Credenciales inválidas o expiradas",
             headers={"WWW-Authenticate": "Bearer"},
         )
