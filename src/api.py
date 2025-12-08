@@ -18,7 +18,7 @@ app = FastAPI(
     version="1.1.0"
 )
 
-CONFIGURAR CORS
+# Configuración de CORS
 origins = [
     "http://localhost:5173", # Vite por defecto
     "http://localhost:5174", # Tu puerto actual
