@@ -188,5 +188,35 @@ def save_schedule(payload: SaveRequest, current_user: str = Depends(get_current_
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error al guardar: {str(e)}")
 
+class ScheduleStateResponse(BaseModel):
+    exists: bool
+    count: int
+    schedule: List[SessionData]
+
+@app.get("/schedule/latest", response_model=ScheduleStateResponse, tags=["Persistencia"])
+def get_latest_schedule(current_user: str = Depends(get_current_user)):
+    """
+    Consulta si existe un horario previamente guardado en Sheets.
+    Útil para recuperar el estado al recargar la página.
+    """
+    try:
+        from src.data_loader import get_saved_schedule
+        
+        saved_data = get_saved_schedule(SPREADSHEET_NAME, CREDENTIALS_FILE)
+        
+        return {
+            "exists": len(saved_data) > 0,
+            "count": len(saved_data),
+            "schedule": saved_data
+        }
+    except Exception as e:
+        # No queremos que falle toda la app si Sheets falla en esta consulta no crítica
+        print(f"⚠️ Error recuperando horario guardado: {e}")
+        return {
+            "exists": False,
+            "count": 0,
+            "schedule": []
+        }
+
 if __name__ == "__main__":
     uvicorn.run("src.api:app", host="127.0.0.1", port=8000, reload=True)

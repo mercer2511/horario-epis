@@ -100,6 +100,22 @@ Persiste el horario validado en Google Sheets (Hoja 'Resultados').
     }
     ```
 
+### 5. Recuperar Último Horario
+Consulta si existe un horario guardado previamente en la hoja "Resultados". Útil para recuperar el estado cuando el usuario recarga la página.
+
+*   **Endpoint:** `GET /schedule/latest`
+*   **Auth:** Requiere Token Bearer de Firebase.
+*   **Header:** `Authorization: Bearer <FIREBASE_ID_TOKEN>`
+*   **Respuesta Exitosa:**
+    ```json
+    {
+      "exists": true,
+      "count": 103,
+      "schedule": [ ... lista completa de sesiones ... ]
+    }
+    ```
+    *Si no existe horario guardado, devuelve `exists: false` y `schedule: []`.*
+
 ---
 
 ## 🔐 Autenticación

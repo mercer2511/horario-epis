@@ -225,3 +225,47 @@ def save_schedule_to_sheet(schedule_data: List[Dict[str, Any]], spreadsheet_name
     
     # Formato opcional: Congelar primera fila (headers)
     ws.freeze(rows=1)
+
+def get_saved_schedule(spreadsheet_name: str, credentials_path: str = 'credentials.json') -> List[Dict[str, Any]]:
+    """
+    Recupera el horario guardado en la hoja 'Resultados'.
+    Devuelve una lista de diccionarios con las claves del modelo SessionData.
+    """
+    client = _get_gspread_client(credentials_path)
+    try:
+        sh = client.open(spreadsheet_name)
+    except gspread.SpreadsheetNotFound:
+        return []
+
+    try:
+        ws = sh.worksheet("Resultados")
+    except gspread.WorksheetNotFound:
+        return []
+        
+    records = ws.get_all_records()
+    if not records:
+        return []
+        
+    # Mapeo de columnas Excel -> Modelo Pydantic
+    # Excel: ["Día", "Inicio", "Fin", "Curso", "Grupo", "Aula", "Profesor", "Tipo Aula"]
+    # Modelo: dia, hora_inicio, hora_fin, curso, grupo, aula, profesor, tipo_aula
+    
+    mapped_schedule = []
+    
+    for r in records:
+        # Validación básica para ignorar filas vacías si las hubiera
+        if not r.get('Curso'): 
+            continue
+            
+        mapped_schedule.append({
+            "dia": r.get('Día', ''),
+            "hora_inicio": r.get('Inicio', ''),
+            "hora_fin": r.get('Fin', ''),
+            "curso": r.get('Curso', ''),
+            "grupo": r.get('Grupo', ''),
+            "aula": r.get('Aula', ''),
+            "profesor": r.get('Profesor', ''),
+            "tipo_aula": r.get('Tipo Aula', '')
+        })
+        
+    return mapped_schedule
