@@ -43,6 +43,7 @@ CREDENTIALS_FILE = "credentials.json"
 
 # --- Sistema de Jobs (En memoria para Demo/Cloud Run Instance Single) ---
 jobs: Dict[str, Dict] = {} 
+active_job_id: Optional[str] = None # Semáforo Singleton 
 
 # --- Modelos de Datos (JSON Response) ---
 
@@ -99,6 +100,7 @@ def run_ga_bg_task(job_id: str):
     """
     Ejecuta el GA en segundo plano y actualiza el diccionario global 'jobs'.
     """
+    global active_job_id
     try:
         print(f"🔄 [Job {job_id}] Iniciando tarea en segundo plano...")
         
@@ -115,11 +117,19 @@ def run_ga_bg_task(job_id: str):
             jobs[job_id]["fitness"] = fitness
             # print(f"Job {job_id}: {percent}% (Fit: {fitness})")
 
+        def check_cancellation():
+            return jobs[job_id]["status"] == "cancelled"
+
         # 2. Ejecutar GA
         ga = GeneticAlgorithm(cursos, profesores, aulas, grupos, clases, config)
         
         # Llamamos a evolve pasando el callback
-        best_schedule = ga.evolve(on_progress=on_progress_update)
+        best_schedule = ga.evolve(on_progress=on_progress_update, should_cancel=check_cancellation)
+        
+        if best_schedule is None:
+             print(f"🛑 [Job {job_id}] Detenido por solicitud del usuario.")
+             return # Salimos de la función background
+             
         conflicts = ga.get_conflicts(best_schedule)
         
         # 3. Procesar resultado
@@ -182,6 +192,11 @@ def run_ga_bg_task(job_id: str):
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
         print(f"❌ [Job {job_id}] Falló: {e}")
+    finally:
+        # Liberar el semáforo SIEMPRE, pase lo que pase
+        if active_job_id == job_id:
+            print(f"🔓 Liberando semáforo del job {job_id}")
+            active_job_id = None
 
 class JobResponse(BaseModel):
     job_id: str
@@ -193,7 +208,26 @@ def start_genetic_algorithm(background_tasks: BackgroundTasks, current_user: str
     Inicia la generación en segundo plano y devuelve un Job ID.
     Usa GET /progress/{job_id} para ver el estado.
     """
+    global active_job_id
+    
+    # 1. Check Semáforo
+    if active_job_id is not None:
+        # Verificar si el job activo realmente existe y está corriendo
+        current_job = jobs.get(active_job_id)
+        if current_job and current_job["status"] == "running":
+            raise HTTPException(
+                status_code=503, 
+                detail="El servidor está ocupado procesando otro horario. Por favor intente en unos minutos."
+            )
+        else:
+            # Auto-reparación: Si estaba seteado pero el status no es running, liberamos
+            print("⚠️ Semáforo inconsistente detectado. Reseteando.")
+            active_job_id = None
+
     job_id = str(uuid.uuid4())
+    
+    # Toma el semáforo
+    active_job_id = job_id
     
     # Inicializar estado del job
     jobs[job_id] = {
@@ -227,6 +261,20 @@ def get_job_progress(job_id: str, current_user: str = Depends(get_current_user))
         "result": job.get("result"), # Será null mientras corre, y tendrá el horario al final
         "error": job.get("error")
     }
+
+@app.post("/cancel/{job_id}", tags=["Algoritmo"])
+def cancel_job(job_id: str, current_user: str = Depends(get_current_user)):
+    """
+    Cancela un trabajo en ejecución.
+    """
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job no encontrado")
+    
+    if jobs[job_id]["status"] in ["completed", "failed"]:
+        return {"status": "job_already_finished"}
+        
+    jobs[job_id]["status"] = "cancelled"
+    return {"status": "cancelled"}
 
 class SaveRequest(BaseModel):
     schedule: List[SessionData]

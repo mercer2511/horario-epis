@@ -181,12 +181,17 @@ class GeneticAlgorithm:
                     if eligible_profs:
                         sesion.profesor_id = random.choice(eligible_profs)
 
-    def evolve(self, on_progress: callable = None):
+    def evolve(self, on_progress: callable = None, should_cancel: callable = None):
         self.initialize_population()
         
         max_gens = self.config['max_generations']
         
         for generation in range(max_gens):
+            # Check Cancellation
+            if should_cancel and should_cancel():
+                print("🛑 Genetic Algorithm cancelled by user.")
+                return None
+
             # Calculate fitness for all
             for ind in self.population:
                 self.calculate_fitness(ind)
