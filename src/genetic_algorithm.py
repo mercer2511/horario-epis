@@ -2,6 +2,7 @@ import random
 import copy
 from typing import List, Dict, Set
 from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor
 from .model import Curso, Profesor, Aula, Horario, Sesion, Grupo, Clase
 from .fitness import FitnessEvaluator
 
