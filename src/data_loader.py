@@ -202,7 +202,7 @@ def save_schedule_to_sheet(schedule_data: List[Dict[str, Any]], spreadsheet_name
         ws = sh.add_worksheet(title="Resultados", rows=1000, cols=10)
 
     # Preparar datos para escritura por lotes
-    headers = ["Día", "Inicio", "Fin", "Curso", "Grupo", "Aula", "Profesor", "Tipo Aula"]
+    headers = ["Día", "Inicio", "Fin", "Curso", "Grupo", "Aula", "Profesor", "Tipo Aula", "MetaDiaIdx", "MetaSlotIdx", "MetaNumSlots"]
     
     # Convertir lista de dicts a lista de listas (filas)
     rows = [headers]
@@ -216,7 +216,10 @@ def save_schedule_to_sheet(schedule_data: List[Dict[str, Any]], spreadsheet_name
             item.get('grupo', ''),
             item.get('aula', ''),
             item.get('profesor', ''),
-            item.get('tipo_aula', '')
+            item.get('tipo_aula', ''),
+            item.get('meta_dia_idx', 0),
+            item.get('meta_slot_idx', 0),
+            item.get('meta_num_slots', 1)
         ]
         rows.append(row)
 
@@ -245,27 +248,74 @@ def get_saved_schedule(spreadsheet_name: str, credentials_path: str = 'credentia
     records = ws.get_all_records()
     if not records:
         return []
-        
-    # Mapeo de columnas Excel -> Modelo Pydantic
-    # Excel: ["Día", "Inicio", "Fin", "Curso", "Grupo", "Aula", "Profesor", "Tipo Aula"]
-    # Modelo: dia, hora_inicio, hora_fin, curso, grupo, aula, profesor, tipo_aula
+
+    # Cargar Configuración para Re-calcular índices si faltan (Legacy Data)
+    config = load_config(spreadsheet_name, credentials_path)
+    days = config.get('days', [])
+    slots = config.get('time_slots', [])
     
+    # Helper rápido para calcular slots
+    def get_slot_idx(time_str):
+        for idx, s in enumerate(slots):
+            if s.startswith(time_str):
+                return idx
+        return 0 # Fallback
+    
+    def get_day_idx(day_str):
+        if day_str in days:
+            return days.index(day_str)
+        return 0
+    
+    # Duración aprox (num_slots)
+    # Si tenemos Start y End, calculamos
+    def get_duration(start_str, end_str):
+        s_idx = get_slot_idx(start_str)
+        # Buscar end slot
+        for idx, s in enumerate(slots):
+            # Formato slot: "08:00-08:45"
+            parts = s.split('-')
+            if len(parts) > 1 and parts[1] == end_str:
+                # Si termina en este slot, la duración es (end_idx - start_idx) + 1
+                return (idx - s_idx) + 1
+        return 1 # Fallback
+        
     mapped_schedule = []
     
     for r in records:
-        # Validación básica para ignorar filas vacías si las hubiera
+        # Validación básica para ignorar filas vacías
         if not r.get('Curso'): 
             continue
+        
+        dia = r.get('Día', '')
+        inicio = r.get('Inicio', '')
+        fin = r.get('Fin', '')
+        
+        # Recuperar o Calcular Metadata
+        meta_dia = r.get('MetaDiaIdx')
+        meta_slot = r.get('MetaSlotIdx')
+        meta_num = r.get('MetaNumSlots')
+        
+        if meta_dia is None or meta_dia == "":
+            meta_dia = get_day_idx(dia)
+        
+        if meta_slot is None or meta_slot == "":
+            meta_slot = get_slot_idx(inicio)
+            
+        if meta_num is None or meta_num == "":
+            meta_num = get_duration(inicio, fin)
             
         mapped_schedule.append({
-            "dia": r.get('Día', ''),
-            "hora_inicio": r.get('Inicio', ''),
-            "hora_fin": r.get('Fin', ''),
+            "dia": dia,
+            "hora_inicio": inicio,
+            "hora_fin": fin,
             "curso": r.get('Curso', ''),
             "grupo": r.get('Grupo', ''),
             "aula": r.get('Aula', ''),
             "profesor": r.get('Profesor', ''),
-            "tipo_aula": r.get('Tipo Aula', '')
+            "tipo_aula": r.get('Tipo Aula', ''),
+            "meta_dia_idx": int(meta_dia),
+            "meta_slot_idx": int(meta_slot),
+            "meta_num_slots": int(meta_num)
         })
         
     return mapped_schedule
