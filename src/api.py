@@ -57,6 +57,11 @@ class SessionData(BaseModel):
     profesor: str
     tipo_aula: str
 
+    # Metadata para UI Grid (Facilita el renderizado)
+    meta_dia_idx: int
+    meta_slot_idx: int
+    meta_num_slots: int
+
 class ScheduleResponse(BaseModel):
     status: str
     fitness: float
@@ -169,7 +174,10 @@ def run_ga_bg_task(job_id: str):
                 grupo=grupo.id,
                 aula=aula.nombre,
                 profesor=prof.nombre,
-                tipo_aula=aula.tipo
+                tipo_aula=aula.tipo,
+                meta_dia_idx=s.dia_idx,
+                meta_slot_idx=s.start_slot_idx,
+                meta_num_slots=s.num_slots
             )
             json_output.append(session_data)
             
@@ -291,8 +299,18 @@ def save_schedule(payload: SaveRequest, current_user: str = Depends(get_current_
     
     try:
         # Import lazy para evitar dependencia circular si estuviera arriba (aunque aquí no hay)
-        from src.data_loader import save_schedule_to_sheet
+        from src.data_loader import save_schedule_to_sheet, load_data
         
+        # Validación de Integridad: Verificar que estamos guardando un horario COMPLETO
+        # Cargamos la definición actual de clases para comparar contadores
+        _, _, _, _, expected_clases = load_data(SPREADSHEET_NAME, CREDENTIALS_FILE)
+        
+        if len(data_to_save) != len(expected_clases):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Error de Integridad: Intentando guardar {len(data_to_save)} sesiones, pero se esperan {len(expected_clases)}. El horario está incompleto."
+            )
+
         save_schedule_to_sheet(data_to_save, SPREADSHEET_NAME, CREDENTIALS_FILE)
         
         return {"status": "Guardado exitosamente", "records": len(data_to_save)}
